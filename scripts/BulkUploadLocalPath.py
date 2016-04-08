@@ -153,10 +153,10 @@ for sensor in SENSOR_LIST:
 
     sensorDir = os.path.join(SENSOR_FOLDER, sensor)
     for date in os.listdir(sensorDir):
-        if date[:3] == '2016': # date = YYYY-MM-DD
+        if date[:4] == '2016': # date = YYYY-MM-DD
             dateDir = os.path.join(sensorDir, date)
             for dataset in os.listdir(dateDir):
-                if dataset[:3] == '2016': # dataset = YYYY-MM-DD__hh-mm_ss_mss
+                if dataset[:4] == '2016': # dataset = YYYY-MM-DD__hh-mm_ss_mss
                     dsDir = os.path.join(dateDir, dataset)
 
                     # Find files and metadata in the directory
