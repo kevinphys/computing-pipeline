@@ -17,14 +17,14 @@ extractorName = os.getenv('RABBITMQ_QUEUE', "sensorposition")
 
 # URL to be used for connecting to rabbitmq
 # rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@rabbitmq.ncsa.illinois.edu:5672/clowder-dev")
-rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@141.142.168.74:5672/%2f")
+rabbitmqURL = os.getenv('RABBITMQ_URI', "amqp://guest:guest@localhost:5672/%2f")
 
 # name of rabbitmq exchange
 # rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "terra")
 rabbitmqExchange = os.getenv('RABBITMQ_EXCHANGE', "clowder")
 
 # type of files to process
-messageType = "*.dataset.metadata.added"
+messageType = "*.metadata.added"
 
 # trust certificates, set this to false for self signed certificates
 sslVerify = os.getenv('RABBITMQ_SSLVERIFY', False)

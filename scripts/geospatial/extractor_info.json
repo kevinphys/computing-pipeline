@@ -1,0 +1,13 @@
+{
+    "@context": "http://clowder.ncsa.illinois.edu/contexts/extractors.jsonld",
+    "name": "terra.sensorposition",
+    "version": "1.0",
+    "description": "Geospatial Sensor Position Extractor",
+    "author": "Rob Kooper <kooper@illinois.edu>",
+    "contributors": [],
+    "contexts": [],
+    "repository": {"repType": "git", "repUrl": "https://github.com/terraref/computing-pipeline"},
+    "external_services": [],
+    "dependencies": [],
+    "bibtex": []
+}
