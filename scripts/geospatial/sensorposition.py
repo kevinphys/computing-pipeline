@@ -121,7 +121,7 @@ def process_file(parameters):
 	print("FOV SE lat/lon: (%s, %s)" % (fovSEptLat, fovSEptLon))
 
 	# SAVE POSITION INTO GEOSTREAMS POSTGIS DB ------------------------------------------------------------
-	host = parameters['host']
+	host = "https://terraref.ncsa.illinois.edu/clowder-dev/" #parameters['host']
 	key = parameters['secretKey']
 	streamID = "1"
 	fileIdList = []
