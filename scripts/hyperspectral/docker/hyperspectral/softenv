@@ -1,0 +1,24 @@
+# software environment for hyperspectral image extractor
+
+# common libs and python modules
+export PYTHONPATH="/usr/lib/python2.7/dist-packages:${PYTHONPATH}"
+# hdf5
+export PATH="/srv/sw/hdf5-1.8.17/bin:${PATH}"
+export LD_LIBRARY_PATH="/srv/sw/hdf5-1.8.17/lib:${LD_LIBRARY_PATH}"
+# netcdf4
+export PATH="/srv/sw/netcdf-4.4.1/bin:${PATH}"
+export LD_LIBRARY_PATH="/srv/sw/netcdf-4.4.1/lib:${LD_LIBRARY_PATH}"
+# geos
+export PATH="/srv/sw/geos/bin:${PATH}"
+export PYTHONPATH="/srv/sw/geos/lib/python2.7/site-packages:${PYTHONPATH}"
+export LD_LIBRARY_PATH="/srv/sw/geos/lib:${LD_LIBRARY_PATH}"
+# proj4
+export PATH="/srv/sw/proj4/bin:${PATH}"
+export LD_LIBRARY_PATH="/srv/sw/proj4/lib:${LD_LIBRARY_PATH}"
+# gdal
+export PATH="/srv/sw/gdal/bin:${PATH}"
+export PYTHONPATH="/srv/sw/gdal/lib/python2.7/site-packages:${PYTHONPATH}"
+export LD_LIBRARY_PATH="/srv/sw/gdal/lib:${LD_LIBRARY_PATH}"
+# nco
+export PATH="/srv/sw/nco-4.6.1/bin:${PATH}"
+export LD_LIBRARY_PATH="/srv/sw/nco-4.6.1/lib:${LD_LIBRARY_PATH}"
