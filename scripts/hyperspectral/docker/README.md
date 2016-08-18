@@ -18,4 +18,5 @@ source ./.softenv
 cd computing-pipeline/scripts/hyperspectral/
 ./terraref.sh -d 1 -I ~/terraref-hyperspectral-input-sample -O ~/output
 gdalinfo ~/output/${netcdf_filename}
+ncks --cdl -m -M ~/output/${netcdf_filename}
 </pre>
