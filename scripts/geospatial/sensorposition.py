@@ -29,12 +29,12 @@ def check_message(parameters):
 				gantryInfo = lem_md['gantry_system_variable_metadata']
 				sensorInfo = lem_md['sensor_fixed_metadata']
 
-				if (	'Position x [m]' in gantryInfo and
-						'Position y [m]' in gantryInfo and
-						'location in camera box X [m]' in sensorInfo and
-						'location in camera box Y [m]' in sensorInfo and
-						'field of view X [m]' in sensorInfo and
-						'field of view Y [m]' in sensorInfo):
+				if (	'position x [m]' in gantryInfo and
+						'position y [m]' in gantryInfo and
+						'location in camera box x [m]' in sensorInfo and
+						'location in camera box y [m]' in sensorInfo and
+						'field of view x [m]' in sensorInfo and
+						'field of view y [m]' in sensorInfo):
 					return True
 
 	# If we didn't find required metadata info, don't process this dataset
@@ -49,16 +49,16 @@ def process_file(parameters):
 	sensorInfo = data['lemnatec_measurement_metadata']['sensor_fixed_metadata']
 
 	#get position of gantry
-	gantryX = jsonToFloat(gantryInfo['Position x [m]'])
-	gantryY = jsonToFloat(gantryInfo['Position y [m]'])
+	gantryX = jsonToFloat(gantryInfo['position x [m]'])
+	gantryY = jsonToFloat(gantryInfo['position y [m]'])
 
 	#get position of sensor
-	sensorX = jsonToFloat(sensorInfo['location in camera box X [m]'])
-	sensorY = jsonToFloat(sensorInfo['location in camera box Y [m]'])
+	sensorX = jsonToFloat(sensorInfo['location in camera box x [m]'])
+	sensorY = jsonToFloat(sensorInfo['location in camera box y [m]'])
 
 	#get field of view (assuming field of view X and field of view Y are based on the center of the sensor)
-	fovX = jsonToFloat(sensorInfo['field of view X [m]'])
-	fovY = jsonToFloat(sensorInfo['field of view Y [m]'])
+	fovX = jsonToFloat(sensorInfo['field of view x [m]'])
+	fovY = jsonToFloat(sensorInfo['field of view y [m]'])
 
 	#get timestamp
 	#if 'Time' in gantryInfo:
