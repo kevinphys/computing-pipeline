@@ -20,7 +20,7 @@ def main():
 
 # Check whether dataset has geospatial metadata
 def check_message(parameters):
-	print(parameters)
+	#print(parameters)
 	if 'metadata' in parameters:
 		# Check properties of metadata for required geospatial information
 		if 'lemnatec_measurement_metadata' in parameters['metadata']:
@@ -31,8 +31,8 @@ def check_message(parameters):
 
 				if (	'Position x [m]' in gantryInfo and
 						'Position y [m]' in gantryInfo and
-						'location in camera box x [m]' in sensorInfo and
-						'location in camera box y [m]' in sensorInfo and
+						'location in camera box X [m]' in sensorInfo and
+						'location in camera box Y [m]' in sensorInfo and
 						'field of view X [m]' in sensorInfo and
 						'field of view Y [m]' in sensorInfo):
 					return True
@@ -42,6 +42,8 @@ def check_message(parameters):
 
 # Process the file and upload the results
 def process_file(parameters):
+	#
+	data = parameters['metadata']
 	# GET LOCATION INFO FROM METADATA ------------------------------------------------------------
 	gantryInfo = data['lemnatec_measurement_metadata']['gantry_system_variable_metadata']
 	sensorInfo = data['lemnatec_measurement_metadata']['sensor_fixed_metadata']
@@ -51,8 +53,8 @@ def process_file(parameters):
 	gantryY = jsonToFloat(gantryInfo['Position y [m]'])
 
 	#get position of sensor
-	sensorX = jsonToFloat(sensorInfo['location in camera box x [m]'])
-	sensorY = jsonToFloat(sensorInfo['location in camera box y [m]'])
+	sensorX = jsonToFloat(sensorInfo['location in camera box X [m]'])
+	sensorY = jsonToFloat(sensorInfo['location in camera box Y [m]'])
 
 	#get field of view (assuming field of view X and field of view Y are based on the center of the sensor)
 	fovX = jsonToFloat(sensorInfo['field of view X [m]'])
@@ -121,7 +123,9 @@ def process_file(parameters):
 	print("FOV SE lat/lon: (%s, %s)" % (fovSEptLat, fovSEptLon))
 
 	# SAVE POSITION INTO GEOSTREAMS POSTGIS DB ------------------------------------------------------------
-	host = "https://terraref.ncsa.illinois.edu/clowder-dev/" #parameters['host']
+	#host = parameters['host']
+	host = "https://terraref.ncsa.illinois.edu/clowder-dev/"
+
 	key = parameters['secretKey']
 	streamID = "1"
 	fileIdList = []
