@@ -19,6 +19,21 @@ ZERO_ZERO = (33.0745,-111.97475)
 
 mode_date = date(2016, 9, 15)
 
+class calibParam:
+    def __init__(self):
+        self.calibrated = False
+        self.calibrationR = 0.0
+        self.calibrationB = 0.0
+        self.calibrationF = 0.0
+        self.calibrationJ1 = 0.0
+        self.calibrationJ0 = 0.0
+        self.calibrationa1 = 0.0
+        self.calibrationa2 = 0.0
+        self.calibrationX = 0.0
+        self.calibrationb1 = 0.0
+        self.calibrationb2 = 0.0
+
+
 def options():
     
     parser = argparse.ArgumentParser(description='Convert FLIR raw data into pngs and temperature in geotiff',
@@ -96,33 +111,57 @@ def get_flir(in_dir, out_dir):
     
     im_color = create_png(raw_data, out_png) # create png
     
-    tc = rawData_to_temperature(raw_data, scan_time) # get temperature
+    tc = rawData_to_temperature(raw_data, scan_time, metadata) # get temperature
     
     tif_path = temp_name[:-3] + 'tif'
-    #create_geotiff(im_color, gps_bounds, tif_path)
     
     create_geotiff_with_temperature(im_color, tc, gps_bounds, tif_path) # create geotiff
     
     return
 
 
-def rawData_to_temperature(rawData, scan_time):
+def rawData_to_temperature(rawData, scan_time, metadata):
     
     try:
-        fields = scan_time.split()
-        str_date = fields[0].split('/')
-        current_date = date(int(str_date[2]), int(str_date[0]), int(str_date[1]))
-        
+        calibP = get_calibrate_param(metadata)
         tc = np.zeros((480, 640))
         
-        if current_date < mode_date:
+        if not calibP.calibrated:
             tc = rawData/10 - 273.15
         else:
-            tc = flirRawToTemperature(rawData)
+            tc = flirRawToTemperature(rawData, calibP)
     
         return tc
     except Exception as ex:
         fail('raw to temperature fail:' + str(ex))
+        
+def get_calibrate_param(metadata):
+    
+    try:
+        sensor_fixed_meta = metadata['lemnatec_measurement_metadata']['sensor_fixed_metadata']
+        calibrated = sensor_fixed_meta['calibrated']
+        calibparameter = calibParam()
+        if calibrated == 'false':
+            return calibparameter
+        if calibrated == 'true':
+            calibparameter.calibrated = True
+            calibparameter.calibrationR = float(sensor_fixed_meta['calibration r'])
+            calibparameter.calibrationB = float(sensor_fixed_meta['calibration b'])
+            calibparameter.calibrationF = float(sensor_fixed_meta['calibration f'])
+            calibparameter.calibrationJ1 = float(sensor_fixed_meta['calibration j1'])
+            calibparameter.calibrationJ0 = float(sensor_fixed_meta['calibration j0'])
+            calibparameter.calibrationa1 = float(sensor_fixed_meta['calibration alpha1'])
+            calibparameter.calibrationa2 = float(sensor_fixed_meta['calibration alpha2'])
+            calibparameter.calibrationX = float(sensor_fixed_meta['calibration x'])
+            calibparameter.calibrationb1 = float(sensor_fixed_meta['calibration beta1'])
+            calibparameter.calibrationb2 = float(sensor_fixed_meta['calibration beta2'])
+            
+            return calibparameter
+        
+
+    except KeyError as err:
+        return calibParam()
+    
 
 def create_geotiff_with_temperature(np_arr, temp_arr, gps_bounds, out_file_path):
     try:
@@ -220,19 +259,19 @@ def create_png(im, outfile_path):
     return np.array(img_data)
         
 # convert flir raw data into temperature C degree, for date after September 15th
-def flirRawToTemperature(rawData):
+def flirRawToTemperature(rawData, calibP):
     
-    R = 15976.1
-    B = 1417.3
-    F = 1.00
-    J0 = 3597
-    J1 = 73.549
+    R = calibP.calibrationR
+    B = calibP.calibrationB
+    F = calibP.calibrationF
+    J0 = calibP.calibrationJ0
+    J1 = calibP.calibrationJ1
     
-    X = 1.9
-    a1 = 0.006569
-    b1 = -0.002276
-    a2 = 0.01262
-    b2 = -0.00667
+    X = calibP.calibrationX
+    a1 = calibP.calibrationa1
+    b1 = calibP.calibrationb1
+    a2 = calibP.calibrationa2
+    b2 = calibP.calibrationb2
     
     H2O_K1 = 1.56
     H2O_K2 = 0.0694
