@@ -13,4 +13,4 @@ FLIR Converter
 
 * output png file is a heatmap according to raw data
 
-* output geotiff file is consist of geospatial attributes and temperature in degree C in each pixel. The script consider raw data with 100 mk in unit before September 15. After September 15, the script use the method that provided in FlirRawToTemperature.m to get a temperature in degree C
+* output geotiff file is consist of geospatial attributes and temperature in degree C in each pixel. If there is a parameter "calibrated": "true" in the json file, the script use the method that provided in FlirRawToTemperature.m to get a temperature in degree C, otherwise the script consider raw data as 100 mk in unit
