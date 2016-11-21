@@ -45,14 +45,6 @@ Config file has 2 important entries which do not have default values:
 """
 config = {}
 
-"""Maps dataset/collection name to clowder UUID
-{
-    "name": "UUID"
-}
-"""
-datasetMap = {}
-collectionMap = {}
-
 app = Flask(__name__)
 api = restful.Api(app)
 
@@ -123,7 +115,8 @@ def loadJsonFile(filename):
 
 """Find dataset id if dataset exists, creating if necessary"""
 def fetchDatasetByName(datasetName, requestsSession, spaceOverrideId=None):
-    if datasetName not in datasetMap:
+    datasetId = getDatasetIdByName(datasetName)
+    if not datasetId:
         # Fetch collection & space IDs (creating collections if necessary) to post with the new dataset
         if datasetName.find(" - ") > -1:
             sensorName = datasetName.split(" - ")[0]
@@ -141,7 +134,6 @@ def fetchDatasetByName(datasetName, requestsSession, spaceOverrideId=None):
 
         if ds.status_code == 200:
             dsid = ds.json()['id']
-            datasetMap[datasetName] = dsid
             writeDatasetRecordToDatabase(datasetName, dsid)
             logger.info("++ created dataset %s (%s)" % (datasetName, dsid), extra={
                 "dataset_id": dsid,
@@ -154,32 +146,7 @@ def fetchDatasetByName(datasetName, requestsSession, spaceOverrideId=None):
             return None
 
     else:
-        # We have a record of it, but check that it still exists before returning the ID
-        dsid = datasetMap[datasetName]
-        return dsid
-
-        # TODO: re-enable this check once backlog is caught up
-        ds = requestsSession.get(config['clowder']['host']+"/api/datasets/"+dsid)
-        if ds.status_code == 200:
-            logger.info("- dataset %s already exists (%s)" % (datasetName, dsid))
-            return dsid
-        else:
-            # Query the database just in case, before giving up and creating a new dataset
-            dstitlequery = requestsSession.get(config['clowder']['host']+"/api/datasets?title="+datasetName)
-            if dstitlequery.status_code == 200:
-                results = dstitlequery.json()
-                if len(results) > 0:
-                    return results[0]['id']
-                else:
-                    logger.error("- cannot find dataset %s; creating new dataset %s" % (dsid, datasetName))
-                    # Could not find dataset so we'll just delete the record and create a new one
-                    del datasetMap[datasetName]
-                    return fetchDatasetByName(datasetName, requestsSession, spaceOverride)
-            else:
-                logger.error("- cannot find dataset %s; creating new dataset %s" % (dsid, datasetName))
-                # Could not find dataset so we'll just delete the record and create a new one
-                del datasetMap[datasetName]
-                return fetchDatasetByName(datasetName, requestsSession, spaceOverride)
+        return datasetId
 
 """Find list of file objects in a given dataset"""
 def fetchDatasetFileList(datasetId, requestsSession):
@@ -195,7 +162,8 @@ def fetchDatasetFileList(datasetId, requestsSession):
 
 """Find dataset id if dataset exists, creating if necessary"""
 def fetchCollectionByName(collectionName, requestsSession):
-    if collectionName not in collectionMap:
+    collectionId = getCollectionIdByName(collectionName)
+    if not collectionId:
         coll = requestsSession.post(config['clowder']['host']+"/api/collections",
                                     headers={"Content-Type": "application/json"},
                                     data='{"name": "%s", "description": ""}' % collectionName)
@@ -203,7 +171,6 @@ def fetchCollectionByName(collectionName, requestsSession):
 
         if coll.status_code == 200:
             collid = coll.json()['id']
-            collectionMap[collectionName] = collid
             writeCollectionRecordToDatabase(collectionName, collid)
             logger.info("++ created collection %s (%s)" % (collectionName, collid), extra={
                 "collection_id": collid,
@@ -220,32 +187,7 @@ def fetchCollectionByName(collectionName, requestsSession):
             return None
 
     else:
-        # We have a record of it, but check that it still exists before returning the ID
-        collid = collectionMap[collectionName]
-        return collid
-
-        # TODO: re-enable this check once backlog is caught up
-        coll = requestsSession.get(config['clowder']['host']+"/api/collections/"+collid)
-        if coll.status_code == 200:
-            logger.info("- collection %s already exists (%s)" % (collectionName, collid))
-            return collid
-        else:
-            # Query the database just in case, before giving up and creating a new dataset
-            colltitlequery = requestsSession.get(config['clowder']['host']+"/api/collections?title="+collectionName)
-            if colltitlequery.status_code == 200:
-                results = colltitlequery.json()
-                if len(results) > 0:
-                    return results[0]['id']
-                else:
-                    logger.error("- cannot find collection %s; creating new collection %s" % (collid, collectionName))
-                    # Could not find collection so we'll just delete the record and create a new one
-                    del collectionMap[collectionName]
-                    return fetchCollectionByName(collectionName, requestsSession)
-            else:
-                logger.error("- cannot find collection %s; creating new collection %s" % (collid, collectionName))
-                # Could not find collection so we'll just delete the record and create a new one
-                del collectionMap[collectionName]
-                return fetchCollectionByName(collectionName, requestsSession)
+        return collectionId
 
 
 # ----------------------------------------------------------
@@ -347,22 +289,31 @@ def getNextUnprocessedTask():
 
     return nextTask
 
-"""Fetch mappings of dataset/collection name to Clowder ID"""
-def readRecordsFromDatabase():
-    q_fetch_datas = "SELECT * FROM datasets;"
-    q_detch_colls = "SELECT * FROM collections;"
+"""Fetch Clowder UUID of dataset from Postgres based on name"""
+def getDatasetIdByName(dsname):
+    q_fetch_datas = "SELECT clowder_id FROM datasets WHERE name='%s';" % dsname
+    clowder_id = None
 
     curs = psql_conn.cursor()
-    logger.debug("Fetching dataset mappings from PostgreSQL...")
     curs.execute(q_fetch_datas)
     for currds in curs:
-        datasetMap[currds[0]] = currds[1]
+        clowder_id = currds[0]
+    curs.close()
 
-    logger.debug("Fetching collection mappings from PostgreSQL...")
+    return clowder_id
+
+"""Fetch Clowder UUID of collection from Postgres based on name"""
+def getCollectionIdByName(collname):
+    q_detch_colls = "SELECT clowder_id FROM collections WHERE name='%s';" % collname
+    clowder_id = None
+
+    curs = psql_conn.cursor()
     curs.execute(q_detch_colls)
     for currco in curs:
-        collectionMap[currco[0]] = currco[1]
+        clowder_id = currco[0]
     curs.close()
+
+    return clowder_id
 
 """Write dataset (name -> clowder_id) mapping to PostgreSQL database"""
 def writeDatasetRecordToDatabase(dataset_name, dataset_id):
@@ -581,7 +532,6 @@ if __name__ == '__main__':
     logger = logging.getLogger('gantry')
 
     psql_conn = connectToPostgres()
-    readRecordsFromDatabase()
 
     logger.info("- initializing service")
     # Create thread for service to begin monitoring
