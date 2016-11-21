@@ -23,8 +23,10 @@ status=$( curl -f -s -X GET http://141.142.170.137:5454/status | tr '\n' ' ' )
 exitcode=$?
 if [ $exitcode -eq 0 ]; then
   unprocessed=$( echo $status | sed 's/.*"unprocessed_task_count": \([0-9]*\).*/\1/' )
+  unprocfiles=$( echo $status | sed 's/.*"unprocessed_file_count": \([0-9]*\).*/\1/' )
+  unprocbytes=$( echo $status | sed 's/.*"unprocessed_byte_count": \([0-9]*\).*/\1/' )
   active=$( echo $status | sed 's/.*"active_task_count": \([0-9]*\).*/\1/' )
-  echo "0 globusmonitor unprocessed=$unprocessed;5000;10000|active=$active;5000;10000 All is OK."
+  echo "0 globusmonitor unprocessed=$unprocessed;5000;10000|active=$active;5000;10000|unprocessedfiles=$unprocfiles;|unprocessedbytes=$unprocbytes; All is OK."
 else
   echo "2 globusmonitor - API is not responding (${exitcode}) : $status"
 fi

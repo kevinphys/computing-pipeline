@@ -134,11 +134,16 @@ def updateNestedDict(existing, new):
 """Return small JSON object with information about monitor health"""
 def getStatus():
     activeTaskCount = len(activeTasks)
-    unprocessedTasks = readTasksByStatus("SUCCEEDED", True)
+    unprocessedTaskResults = readTasksByStatus("SUCCEEDED", True)
+    unprocessedTasks = unprocessedTaskResults['results']
+    unprocessedFileCount = unprocessedTaskResults['tot_files']
+    unprocessedByteCount = unprocessedTaskResults['tot_bytes']
 
     return {
         "active_task_count": activeTaskCount,
         "unprocessed_task_count": len(unprocessedTasks),
+        "unprocessed_file_count": unprocessedFileCount,
+        "unprocessed_byte_count": unprocessedByteCount,
         "next_unprocessed_task": unprocessedTasks[0] if len(unprocessedTasks) > 0 else ""
     }
 
@@ -271,8 +276,10 @@ def readTasksByStatus(status, id_only=False):
       SUCCEEDED (verified complete; not yet uploaded into Clowder)
       PROCESSED (complete & uploaded into Clowder)
     """
+    tot_files = 0
+    tot_bytes = 0
     if id_only:
-        q_fetch = "SELECT globus_id FROM globus_tasks WHERE status = '%s'" % status
+        q_fetch = "SELECT globus_id, file_count, bytes FROM globus_tasks WHERE status = '%s'" % status
         results = []
     else:
         q_fetch = "SELECT globus_id, status, received, completed, globus_user, " \
@@ -287,6 +294,8 @@ def readTasksByStatus(status, id_only=False):
         if id_only:
             # Just add globus ID to list
             results.append(result[0])
+            tot_files += result[1]
+            tot_bytes += result[2]
         else:
             # Add record to dictionary, with globus ID as key
             gid = result[0]
@@ -300,9 +309,15 @@ def readTasksByStatus(status, id_only=False):
                 "bytes": result[6],
                 "contents": result[7]
             }
+            tot_files += result[5]
+            tot_bytes += result[6]
     curs.close()
 
-    return results
+    return {
+        "results": results,
+        "tot_files": tot_files,
+        "tot_bytes": tot_bytes
+    }
 
 """Write dataset (name -> clowder_id) mapping to PostgreSQL database"""
 def writeDatasetRecordToDatabase(dataset_name, dataset_id):
@@ -570,7 +585,7 @@ if __name__ == '__main__':
     logger = logging.getLogger('gantry')
 
     psql_conn = connectToPostgres()
-    activeTasks = readTasksByStatus("IN PROGRESS")
+    activeTasks = readTasksByStatus("IN PROGRESS")["results"]
     generateAuthTokens()
 
     logger.info("- initializing service")
