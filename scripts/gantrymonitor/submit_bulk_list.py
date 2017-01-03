@@ -2,7 +2,7 @@ import requests, json, sys
 
 
 apipath = "http://0.0.0.0:5455/files"
-filepath = sys.argv[0] # e.g. "/root/missing_files/EnvironmentLogger_bundle.list"
+filepath = sys.argv[1] # e.g. "/root/missing_files/EnvironmentLogger_bundle.list"
 sess = requests.Session()
 
 lastRead = ""
