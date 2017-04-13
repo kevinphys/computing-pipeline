@@ -22,13 +22,14 @@ from scipy.ndimage.filters import convolve
 from PIL import Image
 from math import cos, pi
 from osgeo import gdal, osr
+import utm
 
 ZERO_ZERO = (33.07451869,-111.97477775) # (latitude, longitude) of SE corner (positions are + in NW direction); I think this is EPSG4326 (wgs84)
 # NOTE: This STEREO_OFFSET is an experimentally determined value.
 STEREO_OFFSET = .17 # distance from center_position to each of the stereo cameras (left = +, right = -)
 
 ## PARAMS FROM 5/8
-HEIGHT_MAGIC_NUMBER = 1.8 # this is the value we have to add to our Z position to get the images in a column to line up.
+HEIGHT_MAGIC_NUMBER = 1.64 # this is the value we have to add to our Z position to get the images in a column to line up.
 
 # Test by Baker
 FOV_MAGIC_NUMBER = 0.1552 
@@ -36,6 +37,16 @@ FOV_IN_2_METER_PARAM = 0.837 # since we don't have a true value of field of view
 
 # PARAMS FROM 5/25
 #HEIGHT_MAGIC_NUMBER = 1.3 # this is the value we have to add to our Z position to get the images in a column to line up.
+
+# Scanalyzer -> MAC formular @ https://terraref.gitbooks.io/terraref-documentation/content/user/geospatial-information.html
+# Mx = ax + bx * Gx + cx * Gy
+# My = ay + by * Gx + cy * Gy
+SE_latlon = (33.07451869,-111.97477775)
+ay = 3659974.971; by = 1.0002; cy = 0.0078;
+ax = 409012.2032; bx = 0.009; cx = - 0.9986;
+lon_shift = 0.000020308287
+lat_shift = 0.000015258894
+SE_utm = utm.from_latlon(SE_latlon[0], SE_latlon[1])
 
 def main(in_dir, out_dir, tif_list_file, bounds):
     if not os.path.isdir(in_dir):
@@ -57,8 +68,8 @@ def main(in_dir, out_dir, tif_list_file, bounds):
         left_position = [center_position[0]+STEREO_OFFSET, center_position[1], center_position[2]]
         right_position = [center_position[0]-STEREO_OFFSET, center_position[1], center_position[2]]
 
-        left_gps_bounds = get_bounding_box(left_position, fov) # (lat_max, lat_min, lng_max, lng_min) in decimal degrees
-        right_gps_bounds = get_bounding_box(right_position, fov)
+        left_gps_bounds = get_bounding_box_with_formula(left_position, fov) # (lat_max, lat_min, lng_max, lng_min) in decimal degrees
+        right_gps_bounds = get_bounding_box_with_formula(right_position, fov)
 
         # check if this file is in the GPS bounds of interest
         #if left_gps_bounds[1] > bounds[0] and left_gps_bounds[0] < bounds[2] and left_gps_bounds[3] > bounds[1] and left_gps_bounds[2] < bounds[3]:
@@ -147,14 +158,14 @@ def get_position(metadata):
         if "location in camera box z [m]" in cam_meta: # this may not be in older data
             cam_z = cam_meta["location in camera box z [m]"]
         else:
-            cam_z = 0
+            cam_z = 0.578
     except KeyError as err:
         fail('Metadata file missing key: ' + err.args[0])
 
     try:
         x = float(gantry_x) + float(cam_x)
         y = float(gantry_y) + float(cam_y)
-        z = HEIGHT_MAGIC_NUMBER + float(gantry_z) + float(cam_z) # gantry rails are at 2m
+        z = float(gantry_z) + float(cam_z)# + HEIGHT_MAGIC_NUMBER # gantry rails are at 2m
     except ValueError as err:
         fail('Corrupt positions, ' + err.args[0])
     return (x, y, z)
@@ -167,25 +178,34 @@ def get_fov(metadata, camHeight, shape):
         fail('Metadata file missing key: ' + err.args[0])
 
     try:
-        fov_list = fov.replace("[","").replace("]","").split()
-        fov_x = float(fov_list[0])
-        fov_y = float(fov_list[1])
+        #fov_list = fov.replace("[","").replace("]","").split()
+        fov_x = 1.015 #float(fov_list[0])
+        fov_y = 0.749 #float(fov_list[1])
         
+        HEIGHT_MAGIC_NUMBER = 1.64
+        PREDICT_MAGIC_SLOPE = 0.574
+        predict_plant_height = PREDICT_MAGIC_SLOPE * camHeight
+        camH_fix = camHeight + HEIGHT_MAGIC_NUMBER - predict_plant_height
+        fix_fov_x = fov_x*(camH_fix/2)
+        fix_fov_y = fov_y*(camH_fix/2)
+        
+        '''
         # test by Baker
         gantry_meta = metadata['lemnatec_measurement_metadata']['gantry_system_variable_metadata']
         gantry_z = gantry_meta["position z [m]"]
         fov_offset = (float(gantry_z) - 2) * FOV_MAGIC_NUMBER
         fov_y = fov_y*(FOV_IN_2_METER_PARAM + fov_offset)
         fov_x = (fov_y)/shape[1]*shape[0]
+        
 
         # given fov is at 2m, so need to convert for actual height
-        #fov_x = (camHeight * (fov_x/2))/2
-        #fov_y = (camHeight * (fov_y/2))/2
-        
+        fov_x = (camHeight * (fov_x))/2
+        fov_y = (camHeight * (fov_y))/2
+        '''
 
     except ValueError as err:
         fail('Corrupt FOV inputs, ' + err.args[0])
-    return (fov_x, fov_y)
+    return (fix_fov_x, fix_fov_y)
 
 def get_bounding_box(center_position, fov):
     # NOTE: ZERO_ZERO is the southeast corner of the field. Position values increase to the northwest (so +y-position = +latitude, or more north and +x-position = -longitude, or more west)
@@ -212,6 +232,24 @@ def get_bounding_box(center_position, fov):
     except Exception as ex:
         fail('Failed to get GPS bounds from center + FOV: ' + str(ex))
     return (lat_min, lat_max, lng_max, lng_min)
+
+def get_bounding_box_with_formula(center_position, fov):
+    
+    y_w = center_position[1] + fov[1]/2
+    y_e = center_position[1] - fov[1]/2
+    x_n = center_position[0] + fov[0]/2
+    x_s = center_position[0] - fov[0]/2
+    
+    Mx_nw = ax + bx * x_n + cx * y_w
+    My_nw = ay + by * x_n + cy * y_w
+    
+    Mx_se = ax + bx * x_s + cx * y_e
+    My_se = ay + by * x_s + cy * y_e
+    
+    fov_nw_latlon = utm.to_latlon(Mx_nw, My_nw, SE_utm[2],SE_utm[3])
+    fov_se_latlon = utm.to_latlon(Mx_se, My_se, SE_utm[2],SE_utm[3])
+    
+    return (fov_se_latlon[0] - lat_shift, fov_nw_latlon[0] - lat_shift, fov_nw_latlon[1] + lon_shift, fov_se_latlon[1] + lon_shift)
 
 def process_image(shape, in_file, out_file):
     try:
